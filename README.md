@@ -13,6 +13,12 @@ If you're already using nall, use its parser instead. If you're not, you've come
 
 Since there are already a number of other markup languages with the acronym BML, throughout this library I will be referring to the language as byuuML.
 
+# License
+
+This library is licensed under the zlib license (see [`LICENSE.md`](LICENSE.md)).
+
+I don't claim to have originated or designed the byuuML format, or any copright on it. I only claim to have written this library, and originated the sequences of words that comprise its documentation.
+
 # Using the `byuuML` library
 
 (If you are only interested in technical details about the byuuML file format, you want to read [`FORMAT.md`](FORMAT.md).)
