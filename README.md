@@ -65,12 +65,12 @@ ifreader reader(std::cin);
 std::shared_ptr<byuuML::document> document = std::make_shared<byuuML::document>(reader);
 ```
 
-A `byuuML::document` is, conceptually, a tree of `byuuML::node`s. This tree is immutable and compact. A `document` acts as a simple container for the root `node`s, and each `node` acts as a simple container for its child `node`s.
+A `byuuML::document` is, conceptually, a tree of `byuuML::node`s. This tree is immutable and compact. A `document` acts as a simple container for the root `node`s, and each `node` acts as a container for its child `node`s. Because of the way `node`s are stored in memory, you also need to refer to a `document` in order to iterate on one. Here's an example:
 
 ```c++
 // A simple pretty printer for byuuML nodes. Conveniently, it outputs a valid
 // byuuML document, as long as there aren't any newlines in the Data.
-void print_node(std::ostream& out,
+void print_node(std::ostream& out, const byuuML::document& document,
                 const byuuML::node& node, int indent_level = 0) {
     for(int n = 0; n < indent_level; ++n) {
         out << "    ";
@@ -78,14 +78,14 @@ void print_node(std::ostream& out,
     out << node.name;
     if(!node.data.empty()) out << ":" << node.data;
     out << "\n";
-    for(auto& child : node) {
-        print_node(out, child, indent_level + 1);
+    for(auto& child : byuuML::node_in_document(node, document)) {
+        print_node(out, document, child, indent_level + 1);
     }
 }
 void print_document(std::ostream& out,
                     const byuuML::document& document) {
     for(auto& node : document) {
-        print_node(out, node);
+        print_node(out, document, node);
     }
 }
 ```

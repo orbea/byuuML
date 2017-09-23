@@ -10,48 +10,47 @@
  */
 
 namespace byuuML {
-  /*
-    `class T : auto_list<T>` defines a class, `T`, that is always a member of
-    a linked list. Each element contains a pointer to the next element in the
-    list, and also owns that element.
-   */
-  template<class T> class auto_list {
-    auto_list(const auto_list& other) = delete;
-    auto_list(auto_list&& other) = delete;
-    auto_list& operator=(const auto_list& other) = delete;
-    auto_list& operator=(auto_list&& other) = delete;
-  protected:
-    std::unique_ptr<T> next;
+  class node {
   public:
-    auto_list() {}
-    auto_list(std::unique_ptr<T> next) : next(std::move(next)) {}
-    const T* get_next() const { return next.get(); }
-    T* get_next() { return next.get(); }
-  };
-  class node : protected auto_list<node> {
-    const std::unique_ptr<node> children;
+    /*
+      This limits us to ~4 billion nodes on most machines, and 65535 on some.
+      I don't see this as problematic. If you do, change this to size_t.
+    */
+    typedef unsigned int index;
+    static constexpr index SENTINEL_INDEX = ~index(0);
+  private:
+    std::string name;
+    std::string data;
+    unsigned int sibling, child;
   public:
-    const std::string name;
-    const std::string data;
     class const_iterator {
-      const node* p;
+      const std::unique_ptr<node[]>& node_buffer;
+      index node_index;
     public:
-      const_iterator(const node* p) : p(p) {}
-      const_iterator& operator++() { p = p->get_next(); return *this; }
-      bool operator==(const const_iterator& other) const { return p == other.p; }
-      bool operator!=(const const_iterator& other) const { return p != other.p; }
-      const node& operator*() const { return *p; }
-      const node& operator->() const { return *p; }
+      const_iterator(const std::unique_ptr<node[]>& node_buffer,
+                     index node_index)
+        : node_buffer(node_buffer), node_index(node_index) {}
+      const_iterator& operator++() {
+        node_index = node_buffer[node_index].sibling;
+        return *this;
+      }
+      bool operator==(const const_iterator& other) const {
+        return &node_buffer == &other.node_buffer && node_index ==other.node_index;
+      }
+      bool operator!=(const const_iterator& other) const {
+        return !(*this == other);
+      }
+      const node& operator*() const { return node_buffer[node_index]; }
+      const node& operator->() const { return node_buffer[node_index]; }
     };
-    node(std::string name, std::string data, std::unique_ptr<node> children,
-         std::unique_ptr<node> next_node)
-      : auto_list(std::move(next_node)),
-        children(std::move(children)), name(name), data(data) {}
-    const_iterator begin() const { return const_iterator(children.get()); }
-    const_iterator cbegin() const { return begin(); }
-    const_iterator end() const { return const_iterator(nullptr); }
-    const_iterator cend() const { return end(); }
-    bool has_children() const { return children.get() != nullptr; }
+    node() : sibling(SENTINEL_INDEX), child(SENTINEL_INDEX) {}
+    node(std::string name, std::string data, index sibling, index child)
+      : name(name), data(data), sibling(sibling), child(child) {}
+    bool has_children() const { return child != SENTINEL_INDEX; }
+    const std::string& get_name() const { return name; }
+    const std::string& get_data() const { return data; }
+    index get_sibling_index() const { return sibling; }
+    index get_child_index() const { return child; }
   };
   class reader {
   public:
@@ -59,26 +58,44 @@ namespace byuuML {
     virtual void read_more(const char*& begin, const char*& end) = 0;
   };
   class document {
-    std::unique_ptr<node> nodes;
-    document(const document& other) = delete;
-    document& operator=(const document& other) = delete;
+    std::unique_ptr<node[]> node_buffer;
   public:
-    document(document&& other) {
-      nodes.swap(other.nodes);
-    }
-    document& operator=(document&& other) {
-      nodes.reset();
-      nodes.swap(other.nodes);
-      return *this;
-    }
     // will throw a std::string on failure
     // max_depth is approximate, it may sometimes be exceeded by one
     document(reader&, size_t max_depth = 50);
-    // here's this constructor if you want it, I guess?
-    document(std::unique_ptr<node> nodes) : nodes(std::move(nodes)) {}
-    node::const_iterator begin() const { return node::const_iterator(nodes.get()); }
+    const std::unique_ptr<node[]>& get_node_buffer() const { return node_buffer; }
+    node::const_iterator begin() const {
+      return node::const_iterator(node_buffer, 0);
+    }
     node::const_iterator cbegin() const { return begin(); }
-    node::const_iterator end() const { return node::const_iterator(nullptr); }
+    node::const_iterator end() const {
+      return node::const_iterator(node_buffer, node::SENTINEL_INDEX);
+    }
+    node::const_iterator cend() const { return end(); }
+  };
+  class node_in_document {
+    const std::unique_ptr<node[]>& node_buffer;
+    const node& node_ref;
+  public:
+    node_in_document(const std::unique_ptr<node[]>& node_buffer,
+                     const node& node_ref)
+      : node_buffer(node_buffer), node_ref(node_ref) {}
+    node_in_document(const document& document,
+                     const node& node_ref)
+      : node_buffer(document.get_node_buffer()), node_ref(node_ref) {}
+    node_in_document(const node& node_ref,
+                     const std::unique_ptr<node[]>& node_buffer)
+      : node_buffer(node_buffer), node_ref(node_ref) {}
+    node_in_document(const node& node_ref,
+                     const document& document)
+      : node_buffer(document.get_node_buffer()), node_ref(node_ref) {}
+    node::const_iterator begin() const {
+      return node::const_iterator(node_buffer, node_ref.get_child_index());
+    }
+    node::const_iterator cbegin() const { return begin(); }
+    node::const_iterator end() const {
+      return node::const_iterator(node_buffer, node::SENTINEL_INDEX);
+    }
     node::const_iterator cend() const { return end(); }
   };
 }

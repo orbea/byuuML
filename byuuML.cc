@@ -149,13 +149,14 @@ namespace {
     if(!dying_node.data.empty()) // the last character will be a spurious '\n'
       dying_node.data.resize(dying_node.data.size()-1);
   }
-  void parse_node(node_being_parsed& in_node,
-                  const char*& _begin, const char*& end,
-                  bool is_attribute_node = false) {
+  size_t parse_node(node_being_parsed& in_node,
+                    const char*& _begin, const char*& end,
+                    bool is_attribute_node = false) {
     const char* begin = _begin;
     if(!is_valid_name_char(*begin))
       throw std::string("Invalid node name");
     const char* p = begin;
+    size_t ret = 1;
     do {
       ++p;
     } while(p != end && is_valid_name_char(*p));
@@ -209,11 +210,12 @@ namespace {
           break;
         }
         in_node.children.emplace_back();
-        parse_node(*in_node.children.rbegin(), p, end, true);
+        ret += parse_node(*in_node.children.rbegin(), p, end, true);
         // attribute nodes don't need to be closed
       }
     }
     _begin = p;
+    return ret;
   }
   void parse_datacont(node_being_parsed& in_node,
                       const char*& begin, const char*& end) {
@@ -221,114 +223,159 @@ namespace {
     in_node.data.insert(in_node.data.end(), begin, end);
     in_node.data.push_back('\n');
   }
-  template<class T>
-  std::unique_ptr<node> cook_nodes(const T& list) {
-    std::unique_ptr<node> next_node;
-    for(auto it = list.rbegin(); it != list.rend(); ++it){
-      next_node = std::make_unique<node>(it->name, it->data,
-                                         cook_nodes(it->children),
-                                         std::move(next_node));
-    }
-    return next_node;
-  }
 }
 
 document::document(reader& reader, size_t max_depth) {
-  line_getter lines(reader);
-  std::vector<node_being_parsed> open_nodes;
-  std::vector<node_being_parsed> document_nodes;
-  open_nodes.reserve(5); // most documents will not be deeper than this
-  const char* begin, *end;
-  while(lines.get_line(begin, end), begin != end) {
-    open_nodes.resize(open_nodes.size()+1);
-    auto& in_node = *open_nodes.rbegin();
-    in_node.indentation_level = parse_indentation(begin, end);
-    if(begin == end) throw std::string("Blank indented line.");
-    if(open_nodes.size() == 1) {
-      // There are no other open nodes. This *must* be a top-level node.
-      if(in_node.indentation_level != 0)
-        throw std::string("Indented node has no parent");
-      parse_node(in_node, begin, end);
-      // we... are done here.
-    }
-    else {
-      // There are other open nodes. We are a child, sibling, or ancestor.
-      auto& recent_node = *(open_nodes.rbegin()+1);
-      if(in_node.indentation_level < recent_node.indentation_level) {
-        // We are an ancestor. Close out nodes until we're not anymore.
-        auto n = open_nodes.size() - 1;
-        do {
-          --n;
-          close_node(open_nodes[n]);
-          if(n == 0) {
-            // closing a root node
-            document_nodes.emplace_back(std::move(open_nodes[n]));
-            break;
-          }
-          else {
-            // closing a child node
-            open_nodes[n-1].children.emplace_back(std::move(open_nodes[n]));
-          }
-        } while(in_node.indentation_level < open_nodes[n].indentation_level);
-        // n is now the level at which we need to exist
-        auto& target_node = open_nodes[n];
-        if(in_node.indentation_level != target_node.indentation_level)
-          throw std::string("Invalid indentation level");
-        target_node.children.clear();
-        parse_node(target_node, begin, end);
-        open_nodes.resize(n+1);
-      }
-      else if(in_node.indentation_level > recent_node.indentation_level) {
-        // We are a child, OR we are a Data Continuation.
-        if(begin[0] == ':') {
-          parse_datacont(recent_node, ++begin, end);
-          open_nodes.resize(open_nodes.size()-1);
-        }
-        else {
-          parse_node(in_node, begin, end);
-        }
-        // we are done here.
+  std::list<node_being_parsed> document_nodes;
+  size_t num_nodes = 0, deepest_child;
+  // Part 1: parse nodes
+  {
+    std::vector<node_being_parsed> open_nodes;
+    line_getter lines(reader);
+    open_nodes.reserve(5); // most documents will not be deeper than this
+    const char* begin, *end;
+    while(lines.get_line(begin, end), begin != end) {
+      open_nodes.resize(open_nodes.size()+1);
+      auto& in_node = *open_nodes.rbegin();
+      in_node.indentation_level = parse_indentation(begin, end);
+      if(begin == end) throw std::string("Blank indented line.");
+      if(open_nodes.size() == 1) {
+        // There are no other open nodes. This *must* be a top-level node.
+        if(in_node.indentation_level != 0)
+          throw std::string("Indented node has no parent");
+        num_nodes += parse_node(in_node, begin, end);
+        // we... are done here.
       }
       else {
-        // We are a sibling. Close out our previous sibling.
-        close_node(recent_node);
-        if(open_nodes.size() == 2) {
-          // Sibling is a root node.
-          document_nodes.emplace_back(std::move(recent_node));
+        // There are other open nodes. We are a child, sibling, or ancestor.
+        auto& recent_node = *(open_nodes.rbegin()+1);
+        if(in_node.indentation_level < recent_node.indentation_level) {
+          // We are an ancestor. Close out nodes until we're not anymore.
+          auto n = open_nodes.size() - 1;
+          do {
+            --n;
+            close_node(open_nodes[n]);
+            if(n == 0) {
+              // closing a root node
+              document_nodes.emplace_back(std::move(open_nodes[n]));
+              break;
+            }
+            else {
+              // closing a child node
+              open_nodes[n-1].children.emplace_back(std::move(open_nodes[n]));
+            }
+          } while(in_node.indentation_level < open_nodes[n].indentation_level);
+          // n is now the level at which we need to exist
+          auto& target_node = open_nodes[n];
+          if(in_node.indentation_level != target_node.indentation_level)
+            throw std::string("Invalid indentation level");
+          target_node.children.clear();
+          num_nodes += parse_node(target_node, begin, end);
+          open_nodes.resize(n+1);
+        }
+        else if(in_node.indentation_level > recent_node.indentation_level) {
+          // We are a child, OR we are a Data Continuation.
+          if(begin[0] == ':') {
+            parse_datacont(recent_node, ++begin, end);
+            open_nodes.resize(open_nodes.size()-1);
+          }
+          else {
+            num_nodes += parse_node(in_node, begin, end);
+          }
+          // we are done here.
         }
         else {
-          // Sibling is a child node.
-          open_nodes[open_nodes.size()-3].children.emplace_back(std::move(recent_node));
+          // We are a sibling. Close out our previous sibling.
+          close_node(recent_node);
+          if(open_nodes.size() == 2) {
+            // Sibling is a root node.
+            document_nodes.emplace_back(std::move(recent_node));
+          }
+          else {
+            // Sibling is a child node.
+            open_nodes[open_nodes.size()-3].children.emplace_back(std::move(recent_node));
+          }
+          recent_node.children.clear();
+          num_nodes += parse_node(recent_node, begin, end);
+          open_nodes.resize(open_nodes.size()-1);
         }
-        recent_node.children.clear();
-        parse_node(recent_node, begin, end);
-        open_nodes.resize(open_nodes.size()-1);
+      }
+      if(open_nodes.size() > max_depth) {
+        throw std::string("Document too deep");
       }
     }
-    if(open_nodes.size() > max_depth) {
-      throw std::string("Document too deep");
+    if(open_nodes.empty()) {
+      // This can only happen if the document is empty.
+      throw std::string("Empty document");
+    }
+    // Close all remaining nodes.
+    auto n = open_nodes.size() - 1;
+    while(true) {
+      close_node(open_nodes[n]);
+      if(n == 0) {
+        // closing a root node
+        document_nodes.emplace_back(std::move(open_nodes[n]));
+        break;
+      }
+      else {
+        // closing a child node
+        open_nodes[n-1].children.emplace_back(std::move(open_nodes[n]));
+        --n;
+      }
+    }
+    if(num_nodes >= node::SENTINEL_INDEX)
+      throw std::string("Document contains too many nodes. (If your application REALLY requires more nodes than will fit in an unsigned int, change the byuuML::node::index typedef in byuuML.hh to a size_t.)");
+    // deepest_child is an upper bound on the depth of non-attribute nodes
+    deepest_child = open_nodes.capacity();
+  }
+  // Part 2: cook nodes
+  {
+    // this code is a little weird because it has to do everything "backwards"
+    // TODO: this memory layout isn't ideal, see if we can find a way to "un-
+    // reverse" the ordering of child-groups of nodes at the same level
+    node_buffer = std::make_unique<node[]>(num_nodes);
+    struct cook_state {
+      std::list<node_being_parsed>::const_reverse_iterator current_node,
+        current_end;
+      node::index current_index, last_index;
+    };
+    std::unique_ptr<cook_state[]> stack
+      = std::make_unique<cook_state[]>(deepest_child);
+    stack[0] = cook_state{
+      document_nodes.crbegin(),
+      document_nodes.crend(),
+      node::index(document_nodes.size()-1),
+      node::SENTINEL_INDEX,
+    };
+    node::index next_index = document_nodes.size();
+    size_t depth = 1;
+    while(depth > 0) {
+      auto& state = stack[depth-1];
+      if(state.current_node == state.current_end) {
+        --depth;
+        continue;
+      }
+      auto next_node = state.current_node;
+      ++next_node;
+      node::index child_index;
+      if(state.current_node->children.empty())
+        child_index = node::SENTINEL_INDEX;
+      else
+        child_index = next_index;
+      node_buffer[state.current_index] = node(state.current_node->name,
+                                              state.current_node->data,
+                                              state.last_index, child_index);
+      if(!state.current_node->children.empty()) {
+        stack[depth++] = cook_state{
+          state.current_node->children.crbegin(),
+          state.current_node->children.crend(),
+          node::index(next_index + state.current_node->children.size() - 1),
+          node::SENTINEL_INDEX,
+        };
+        next_index += state.current_node->children.size();
+      }
+      state.current_node = next_node;
+      state.last_index = state.current_index--;
     }
   }
-  if(open_nodes.empty()) {
-    // This can only happen if the document is empty.
-    throw std::string("Empty document");
-  }
-  // Close all remaining nodes.
-  auto n = open_nodes.size() - 1;
-  while(true) {
-    close_node(open_nodes[n]);
-    if(n == 0) {
-      // closing a root node
-      document_nodes.emplace_back(std::move(open_nodes[n]));
-      break;
-    }
-    else {
-      // closing a child node
-      open_nodes[n-1].children.emplace_back(std::move(open_nodes[n]));
-      --n;
-    }
-  }
-  // Implementing this without recursion would be more efficient, but much less
-  // clear. Recursion will likely be used 
-  nodes = cook_nodes(document_nodes);;
 }
