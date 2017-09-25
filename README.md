@@ -141,13 +141,13 @@ If you wish, you can use brackets instead of calling `query`:
 
 ```c++
 // For every RAM chip in a a SNES Game Pak, print its size and whether it is
-// persistent or not.
+// persistent or volatile.
 for(auto&& c : document["board"]["ram"]) {
     std::cout << "RAM chip: " << c["size"].value<int>() << " bytes (";
-    if(c["name"])
-        std::cout << "persistent";
+    if(c["volatile"])
+        std::cout << "volatile";
     else
-        std::cout << "transient";
+        std::cout << "persistent";
     std::cout << ")\n";
 }
 ```
