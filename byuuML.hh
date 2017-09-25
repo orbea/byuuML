@@ -61,9 +61,9 @@ namespace byuuML {
     const std::string& get_data() const { return data; }
     index get_sibling_index() const { return sibling; }
     index get_child_index() const { return child; }
-    template <typename ...X> cursor query(document& document, X&&... params);
-    node_in_document in_document(document& document);
-    node_in_document in_document(const std::unique_ptr<node[]>& node_buffer);
+    template <typename ...X> cursor query(const document& document, X&&... params) const;
+    node_in_document in_document(const document& document) const;
+    node_in_document in_document(const std::unique_ptr<node[]>& node_buffer) const;
   };
   class reader {
   public:
@@ -85,9 +85,9 @@ namespace byuuML {
       return node::const_iterator(node_buffer, node::SENTINEL_INDEX);
     }
     node::const_iterator cend() const { return end(); }
-    template <typename ...X> cursor query(X&&... params);
-    cursor operator[](std::string wat);
-    cursor operator[](const char* wat);
+    template <typename ...X> cursor query(X&&... params) const;
+    cursor operator[](std::string wat) const;
+    cursor operator[](const char* wat) const;
   };
   class node_in_document {
     const std::unique_ptr<node[]>& node_buffer;
@@ -113,14 +113,14 @@ namespace byuuML {
       return node::const_iterator(node_buffer, node::SENTINEL_INDEX);
     }
     node::const_iterator cend() const { return end(); }
-    template <typename ...X> cursor query(X&&... params);
-    cursor operator[](std::string wat);
-    cursor operator[](const char* wat);
+    template <typename ...X> cursor query(X&&... params) const;
+    cursor operator[](std::string wat) const;
+    cursor operator[](const char* wat) const;
   };
-  inline node_in_document node::in_document(document& document) {
+  inline node_in_document node::in_document(const document& document) const {
     return node_in_document(document, *this);
   }
-  inline node_in_document node::in_document(const std::unique_ptr<node[]>& node_buffer) {
+  inline node_in_document node::in_document(const std::unique_ptr<node[]>& node_buffer) const {
     return node_in_document(node_buffer, *this);
   }
 }
