@@ -152,6 +152,8 @@ namespace {
   size_t parse_node(node_being_parsed& in_node,
                     const char*& _begin, const char*& end,
                     bool is_attribute_node = false) {
+    if(_begin == end)
+      throw std::string("Indented blank line");
     const char* begin = _begin;
     if(!is_valid_name_char(*begin))
       throw std::string("Invalid node name");
