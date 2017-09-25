@@ -10,6 +10,9 @@
  */
 
 namespace byuuML {
+  class cursor;
+  class document;
+  class node_in_document;
   class node {
   public:
     /*
@@ -24,24 +27,31 @@ namespace byuuML {
     unsigned int sibling, child;
   public:
     class const_iterator {
-      const std::unique_ptr<node[]>& node_buffer;
+      const std::unique_ptr<node[]>* node_buffer;
       index node_index;
     public:
       const_iterator(const std::unique_ptr<node[]>& node_buffer,
                      index node_index)
-        : node_buffer(node_buffer), node_index(node_index) {}
+        : node_buffer(&node_buffer), node_index(node_index) {}
       const_iterator& operator++() {
-        node_index = node_buffer[node_index].sibling;
+        node_index = (*node_buffer)[node_index].sibling;
         return *this;
       }
       bool operator==(const const_iterator& other) const {
-        return &node_buffer == &other.node_buffer && node_index ==other.node_index;
+        return node_buffer == other.node_buffer
+          && node_index == other.node_index;
       }
       bool operator!=(const const_iterator& other) const {
         return !(*this == other);
       }
-      const node& operator*() const { return node_buffer[node_index]; }
-      const node& operator->() const { return node_buffer[node_index]; }
+      const node& operator*() const { return (*node_buffer)[node_index]; }
+      const node* operator->() const { return &(*node_buffer)[node_index]; }
+      // not a standard part of being an iterator
+      bool is_over() const { return node_index == SENTINEL_INDEX; }
+      index get_node_index() const { return node_index; }
+      const std::unique_ptr<node[]>& get_node_buffer() const {
+        return *node_buffer;
+      }
     };
     node() : sibling(SENTINEL_INDEX), child(SENTINEL_INDEX) {}
     node(std::string name, std::string data, index sibling, index child)
@@ -51,6 +61,9 @@ namespace byuuML {
     const std::string& get_data() const { return data; }
     index get_sibling_index() const { return sibling; }
     index get_child_index() const { return child; }
+    template <typename ...X> cursor query(document& document, X&&... params);
+    node_in_document in_document(document& document);
+    node_in_document in_document(const std::unique_ptr<node[]>& node_buffer);
   };
   class reader {
   public:
@@ -72,6 +85,9 @@ namespace byuuML {
       return node::const_iterator(node_buffer, node::SENTINEL_INDEX);
     }
     node::const_iterator cend() const { return end(); }
+    template <typename ...X> cursor query(X&&... params);
+    cursor operator[](std::string wat);
+    cursor operator[](const char* wat);
   };
   class node_in_document {
     const std::unique_ptr<node[]>& node_buffer;
@@ -97,7 +113,16 @@ namespace byuuML {
       return node::const_iterator(node_buffer, node::SENTINEL_INDEX);
     }
     node::const_iterator cend() const { return end(); }
+    template <typename ...X> cursor query(X&&... params);
+    cursor operator[](std::string wat);
+    cursor operator[](const char* wat);
   };
+  inline node_in_document node::in_document(document& document) {
+    return node_in_document(document, *this);
+  }
+  inline node_in_document node::in_document(const std::unique_ptr<node[]>& node_buffer) {
+    return node_in_document(node_buffer, *this);
+  }
 }
 
 #endif
