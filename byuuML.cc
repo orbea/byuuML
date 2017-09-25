@@ -227,7 +227,7 @@ namespace {
 
 document::document(reader& reader, size_t max_depth) {
   std::list<node_being_parsed> document_nodes;
-  size_t num_nodes = 0, deepest_child;
+  size_t num_nodes = 0, deepest_child = 0;
   // Part 1: parse nodes
   {
     std::vector<node_being_parsed> open_nodes;
@@ -326,7 +326,7 @@ document::document(reader& reader, size_t max_depth) {
     if(num_nodes >= node::SENTINEL_INDEX)
       throw std::string("Document contains too many nodes. (If your application REALLY requires more nodes than will fit in an unsigned int, change the byuuML::node::index typedef in byuuML.hh to a size_t.)");
     // deepest_child is an upper bound on the depth of non-attribute nodes
-    deepest_child = open_nodes.capacity();
+    deepest_child = std::max(deepest_child, open_nodes.capacity());
   }
   // Part 2: cook nodes
   {
@@ -340,7 +340,7 @@ document::document(reader& reader, size_t max_depth) {
       node::index current_index, last_index;
     };
     std::unique_ptr<cook_state[]> stack
-      = std::make_unique<cook_state[]>(deepest_child);
+      = std::make_unique<cook_state[]>(deepest_child+1);
     stack[0] = cook_state{
       document_nodes.crbegin(),
       document_nodes.crend(),
