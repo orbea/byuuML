@@ -10,13 +10,13 @@ This specification was obtained by reverse engineering the BML parser in the nal
 
 # Structure
 
-A byuuML document defines an ordered sequence of zero or more Nodes.
+A byuuML document defines an ordered sequence of zero or more Tags.
 
-A Node consists of the following:
+A Tag consists of the following:
 
-- A name. The name of a Node may only contain Latin characters, Arabic numerals, hyphens, and periods, and must contain at least one. (i.e. a valid Node name always matches `/^[-.A-Za-z0-9]+$/`)
+- A name. The name of a Tag may only contain Latin characters, Arabic numerals, hyphens, and periods, and must contain at least one. (i.e. a valid Tag name always matches `/^[-.A-Za-z0-9]+$/`)
 - Data (optional). Data is free-form text content. There is no way for Data to contain a carriage return, but every other character (including line feed) is possible.
-- Children. A Node may optionally contain child Nodes.
+- Children. A Tag may optionally contain child Tags.
 
 # Format
 
@@ -26,7 +26,7 @@ A byuuML document SHOULD be encoded in a shift-free ASCII-compatible encoding, p
 
 A byuuML document SHOULD NOT contain any NUL characters.
 
-A document is split up into Lines. Every consecutive sequence of non-line-ending characters in the document is considered to be a Line. The line-ending characters are carriage return and line feed. "Empty" (zero-length) lines are ignored. (In other words, the Lines consist of every match for `/[^\n\r]+/`)
+A document is split up into Lines. Every consecutive sequence of non-line-ending characters in the document is considered to be a Line. The line-ending characters are carriage return and line feed. "Empty" (zero-length) lines MUST be ignored. (In other words, the Lines consist of every match for `/[^\n\r]+/`)
 
 If a line starts with two slashes (`/`), it is ignored. (Lines matching `/^\/\//` are ignored.)
 
@@ -34,37 +34,37 @@ If a line starts with two slashes (`/`), it is ignored. (Lines matching `/^\/\//
 
 A Line begins with indentation. Indentation consists of zero or more occurrences of the tab or space characters. The Indentation Level of a Line is defined as the number of tab or space characters that are found at the beginning of the line.
 
-- An Indentation Level *greater than* the Indentation Level of the most recent Node can denote one of two things:
-    - If the first character after the indentation is a colon (`:`), the line is a Data Continuation for the most recent Node. (See Data below.) Data Continuations MUST NOT be applicable to any Node other than the *most* recent.
-    - Otherwise, the line defines a *child* of the most recent Node. The most recent Node is now considered "open".
-- An Indentation Level *equal* to the Indentation Level of the most recent Node denotes a *sibling* of the Node defined on the previous Line. (The two Nodes share parents.)
-- An Indentation Level *less than* the Indentation Level of the most recent Node "closes" all open Nodes with greater or equal Indentation Levels. This Line's Indentation Level MUST be exactly equal to the Indentation Level of some currently-"open" Node. This line then defines a *sibling* of that Node.
+- An Indentation Level *greater than* the Indentation Level of the most recent Tag can denote one of two things:
+    - If the first character after the indentation is a colon (`:`), the line is a Data Continuation for the most recent Tag. (See Data below.) Data Continuations MUST NOT be applicable to any Tag other than the *most* recent.
+    - Otherwise, the line defines a *child* of the most recent Tag. The most recent Tag is now considered "open".
+- An Indentation Level *equal* to the Indentation Level of the most recent Tag denotes a *sibling* of the Tag defined on the previous Line. (The two Tags share parents.)
+- An Indentation Level *less than* the Indentation Level of the most recent Tag "closes" all open Tags with greater or equal Indentation Levels. This Line's Indentation Level MUST be exactly equal to the Indentation Level of some currently-"open" Tag. This line then defines a *sibling* of that Tag.
 
-Nodes with no parents (or, put another way, nodes whose parent is the document) MUST have an Indentation Level of zero.
+Tags with no parents (or, put another way, Tags whose parent is the document) MUST have an Indentation Level of zero.
 
 If a byuuML document contains any line whose indentation does not meet these rules, the document is invalid.
 
-## Node
+## Tag
 
-A node starts with a Node Name, which is a sequence one or more of the following characters:
+A Tag starts with a Tag Name, which is a sequence one or more of the following characters:
 
 - Latin letters, capital and lowercase (`A`/`a` through `Z`/`z`)
 - Arabic numerals (`0` through `9`)
 - Hyphen (`-`)
 - Period (`.`)
 
-The Node Name ends when the first character outside this set, or the end of the Line, is encountered.
+The Tag Name ends when the first character outside this set, or the end of the Line, is encountered.
 
-(As mentioned above, Node Names match `/^[-.A-Za-z0-9]+$/`)
+(As mentioned above, Tag Names match `/^[-.A-Za-z0-9]+$/`)
 
 ## Data
 
-- If the Node Name is followed by an equals sign (`=`):
+- If the Tag Name is followed by an equals sign (`=`):
     - If the equals sign is followed by a double quote (`"`), the Data consists of every character up to (but not including) the next double quote. If the line ends without another double quote, the document is invalid. (There is no provision for escaping characters.) The remainder of the line (if any) is then parsed as Attributes.
     - Otherwise, the Data consists of every character up to (but not including) the next space character, or the end of the line, whichever occurs first. If the Data contains a double quote character, the document is invalid. The remainder of the line (if any) is then parsed as Attributes.
-- If the Node Name is followed by a colon (`:`), the Data consists of every remaining character on the Line. This includes leading whitespace, if any.
-- If the Node Name is followed by a space (` `), **or the end of the Line**, this Node contains no Data. The remainder of the line (if any) is then parsed as Attributes.
-- If the Node Name is followed by any other character, including a slash (`/`), the document is invalid.
+- If the Tag Name is followed by a colon (`:`), the Data consists of every remaining character on the Line. This includes leading whitespace, if any.
+- If the Tag Name is followed by a space (` `), **or the end of the Line**, this Tag contains no Data. The remainder of the line (if any) is then parsed as Attributes.
+- If the Tag Name is followed by any other character, including a slash (`/`), the document is invalid.
 
 All forms of Data specification allow empty (zero-length) Data to be explicitly specified. Empty Data is **not** the same as **no** Data, as explained in the following section. However, parsers SHOULD expose no Data to applications the same way as empty Data. A separate "no Data" state SHOULD only be significant for Data Continuations.
 
@@ -72,7 +72,7 @@ Applications MAY wish to trim leading whitespace from Data, but this SHOULD NOT 
 
 ### Data Continuation
 
-A line that has a greater Indentation Level than the most recent Node, and begins with a colon (`:`), is a Data Continuation line. If the Node has Data, a line feed and the remaining characters on the line are appended to that Data. If the Node has *no* Data, the remaining characters become that Node's Data.
+A line that has a greater Indentation Level than the most recent Tag, and begins with a colon (`:`), is a Data Continuation line. If the Tag has Data, a line feed and the remaining characters on the line are appended to that Data. If the Tag has *no* Data, the remaining characters become that Tag's Data.
 
 Note that *no* Data and *empty* Data are not the same. Consider the following examples:
 
@@ -80,19 +80,19 @@ Note that *no* Data and *empty* Data are not the same. Consider the following ex
       : Some data
       : Some more data
 
-The name of this Node is `"node"`, and its Data is `"Some data\nSome more data"`.
+The name of this Tag is `"node"`, and its Data is `"Some data\nSome more data"`.
 
     node:
       : Some data
       : Some more data
 
-The name of this Node is `"node"`, and its Data is `"\nSome data\nSome more data"`.
+The name of this Tag is `"node"`, and its Data is `"\nSome data\nSome more data"`.
 
-In spite of this, a parser MAY make no distinction between a node with empty Data and a node with no Data, so long as it parses the above cases correctly.
+In spite of this, a parser MAY make no distinction between a Tag with empty Data and a Tag with no Data, so long as it parses the above cases correctly.
 
 ## Attributes
 
-A Node definition may be followed by Attributes. An Attribute starts with one or more **space** characters, followed by a Node Name, followed by Data. A Node with the given Name and (if present) Data is created as a child of that Node.
+A Tag definition may be followed by Attributes. An Attribute starts with one or more **space** characters, followed by a Tag Name, followed by Data. A Tag with the given Name and (if present) Data is created as a child of that Tag.
 
 NOTE: Tab characters are allowed as indentation, but not allowed at the beginning of attributes.
 
@@ -108,7 +108,7 @@ Is mostly equivalent to the following:
       bark
       dog: Adorable dog
 
-Nodes that are defined as Attributes do not become the "most recent" Node and cannot have children. 
+Tags that are defined as Attributes do not become the "most recent" Tag and cannot have children. 
 
 Anywhere an Attribute is expected, a pair of slashes (`/`) is a comment and ends processing of the line.
 
@@ -122,24 +122,24 @@ This is standard BNF, except that `/.../` signifies a regular expression match.
         <possible-line> ::= <line> | ""
              <line-end> ::= /[\r\n]/
     
-                 <line> ::= <data-continuation> | <node> | <comment>
+                 <line> ::= <data-continuation> | <tag> | <comment>
     
     <data-continuation> ::= <indentation> ":" <remainder>
-                 <node> ::= <indentation> <node-name> <node-data>
+                 <tag> ::= <indentation> <tag-name> <tag-data>
     
           <indentation> ::= /[ \t]*/
-            <node-name> ::= /[-.A-Za-z0-9]+/
-            <node-data> ::= <node-long-data> | <node-short-data> | <attributes>
+            <tag-name> ::= /[-.A-Za-z0-9]+/
+            <tag-data> ::= <tag-long-data> | <tag-short-data> | <attributes>
     
-       <node-long-data> ::= ":" <remainder>
-      <node-short-data> ::= "=" <attribute-data> <attributes>
+       <tag-long-data> ::= ":" <remainder>
+      <tag-short-data> ::= "=" <attribute-data> <attributes>
       
        <attribute-data> ::= <quoted-data> | <unquoted-data>
           <quoted-data> ::= '"' /[^"]*/ '"'
         <unquoted-data> ::= /[^ ]*/
         
            <attributes> ::= <comment> | <attribute> <attributes> | <attribute>
-            <attribute> ::= [ +] <node-name> <node-data>
+            <attribute> ::= [ +] <tag-name> <tag-data>
     
             <remainder> ::= /[^\r\n]*/
 
@@ -195,7 +195,7 @@ Any deviation from this structure, including presence or absence of whitespace, 
 - **`root-node-2`'s Data MUST NOT contain either a colon or carriage return...**  
   ...or your parser does not treat carriage return as ending a line.
 - **`root-node-2` MUST have exactly two direct children `child-node`...**  
-  ...or your parser does not handle multiple explicit child Nodes with the same Name correctly.
+  ...or your parser does not handle multiple explicit child Tags with the same Name correctly.
 - **The second `child-node` MUST NOT have a child `{"x", "y"}` or `{"x", "y\\\""}`...**  
   ...or your parser does not handle quoted Attribute-style Data correctly.
 - **The second `child-node` MUST have exactly three direct children `attribute`...**  
@@ -231,4 +231,4 @@ If your parser handles *all* of these edge cases correctly, then it is probably 
 - byuuML schemas SHOULD be permissive, ignoring data they do not understand.
 - byuuML documents SHOULD contain data related to a common subject.
 - byuuML documents SHOULD be as self-contained as possible.
-- Root Nodes SHOULD divide a document into logical groupings of data. (e.g. a Game Folder manifest might have a `board` Node giving memory layout information, and an `information` Node giving human-facing metadata.)
+- Root Tags SHOULD divide a document into logical groupings of data. (e.g. a Game Folder manifest might have a `board` Tag giving memory layout information, and an `information` Tag giving human-facing metadata.)
