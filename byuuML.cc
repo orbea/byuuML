@@ -8,7 +8,7 @@ using namespace byuuML;
 
 namespace {
   class line_getter : std::vector<char> {
-    reader& reader;
+    reader& raw_reader;
     // Pointers to the buffered region. These may either be in the buffer
     // managed by reader, or in our own internal buffer.
     const char* buf_begin = nullptr, *buf_end = nullptr;
@@ -76,7 +76,7 @@ namespace {
         // buf_begin and buf_end are temporarily invalid
         // Read more data.
         const char* in_begin, *in_end;
-        reader.read_more(in_begin, in_end);
+        raw_reader.read_more(in_begin, in_end);
         if(in_begin == in_end) {
           // There's no more input. The line we have is IT.
           out_begin = line_begin;
@@ -94,13 +94,13 @@ namespace {
       }
     }
   public:
-    line_getter(class reader& reader) : reader(reader) {}
+    line_getter(class reader& raw_reader) : raw_reader(raw_reader) {}
     // like reader, begin == end means no more lines
     void get_line(const char*& out_begin, const char*& out_end) {
       while(true) {
         clean_up();
         if(buf_begin == buf_end) {
-          reader.read_more(buf_begin, buf_end);
+          raw_reader.read_more(buf_begin, buf_end);
           if(buf_begin == buf_end) {
             // no more lines are coming, buster
             out_end = out_begin = nullptr;
@@ -227,13 +227,13 @@ namespace {
   }
 }
 
-document::document(reader& reader, size_t max_depth) {
+document::document(reader& raw_reader, size_t max_depth) {
   std::list<node_being_parsed> document_nodes;
   size_t num_nodes = 0, deepest_child = 0;
   // Part 1: parse nodes
   {
     std::vector<node_being_parsed> open_nodes;
-    line_getter lines(reader);
+    line_getter lines(raw_reader);
     open_nodes.reserve(5); // most documents will not be deeper than this
     const char* begin, *end;
     while(lines.get_line(begin, end), begin != end) {
