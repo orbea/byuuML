@@ -72,8 +72,8 @@ namespace byuuML {
       if(finder.is_over()) throw missing_node_exception();
       return *finder;
     }
-    const std::string& name() const { return node().get_name(); }
-    const std::string& data() const { return node().get_data(); }
+    const std::string& name() const { return get_node().get_name(); }
+    const std::string& data() const { return get_node().get_data(); }
     const std::string& data(const std::string& def) const {
       if(finder.is_over()) return def;
       else return finder->get_data();
@@ -100,6 +100,8 @@ namespace byuuML {
     const cursor& operator*() const { return *this; }
     cursor* operator->() { return this; }
     const cursor* operator->() const { return this; }
+    // for debugging
+    node::const_iterator get_iterator() const { return finder; }
   };
   template<typename ...X> cursor node::query(const document& document, X&&...params) const {
     return byuuML::cursor(document.get_node_buffer(),
