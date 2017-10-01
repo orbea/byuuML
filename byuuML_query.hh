@@ -118,56 +118,56 @@ namespace byuuML {
   }
   inline cursor node_in_document::operator[](std::string wat) const { return query(wat); }
   inline cursor node_in_document::operator[](const char* wat) const { return query(wat); }
-  template<> int cursor::value() const {
+  template<> inline int cursor::value() const {
     std::size_t pos = 0;
     auto& d = data();
     auto ret = std::stoi(d, &pos, 0);
     if(pos != d.length()) throw std::invalid_argument("not an integer");
     return ret;
   }
-  template<> long cursor::value() const {
+  template<> inline long cursor::value() const {
     std::size_t pos = 0;
     auto& d = data();
     auto ret = std::stol(d, &pos, 0);
     if(pos != d.length()) throw std::invalid_argument("not an integer");
     return ret;
   }
-  template<> unsigned long cursor::value() const {
+  template<> inline unsigned long cursor::value() const {
     std::size_t pos = 0;
     auto& d = data();
     auto ret = std::stoul(d, &pos, 0);
     if(pos != d.length()) throw std::invalid_argument("not an integer");
     return ret;
   }
-  template<> long long cursor::value() const {
+  template<> inline long long cursor::value() const {
     std::size_t pos = 0;
     auto& d = data();
     auto ret = std::stoll(d, &pos, 0);
     if(pos != d.length()) throw std::invalid_argument("not an integer");
     return ret;
   }
-  template<> unsigned long long cursor::value() const {
+  template<> inline unsigned long long cursor::value() const {
     std::size_t pos = 0;
     auto& d = data();
     auto ret = std::stoull(d, &pos, 0);
     if(pos != d.length()) throw std::invalid_argument("not an integer");
     return ret;
   }
-  template<> float cursor::value() const {
+  template<> inline float cursor::value() const {
     std::size_t pos = 0;
     auto& d = data();
     auto ret = std::stof(d, &pos);
     if(pos != d.length()) throw std::invalid_argument("not a number");
     return ret;
   }
-  template<> double cursor::value() const {
+  template<> inline double cursor::value() const {
     std::size_t pos = 0;
     auto& d = data();
     auto ret = std::stod(d, &pos);
     if(pos != d.length()) throw std::invalid_argument("not a number");
     return ret;
   }
-  template<> long double cursor::value() const {
+  template<> inline long double cursor::value() const {
     std::size_t pos = 0;
     auto& d = data();
     auto ret = std::stold(d, &pos);
