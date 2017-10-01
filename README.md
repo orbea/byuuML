@@ -112,7 +112,7 @@ if(p) std::cout << "A title was found!\n";
 else std::cout << "A title was not found.\n";
 ```
 
-You may call `node()` on a `cursor` to retrieve a reference to the found `node`, `name()` to retrieve its name, `data()` to retrieve its data, or `value<T>()` to retrieve its value in some type T. All four of these methods will throw `byuuML::missing_node_exception` if the node was not found, and `value<T>()` may throw an exception if converting the data to the desired type failed.
+You may call `get_node()` on a `cursor` to retrieve a reference to the found `node`, `name()` to retrieve its name, `data()` to retrieve its data, or `value<T>()` to retrieve its value in some type T. All four of these methods will throw `byuuML::missing_node_exception` if the node was not found, and `value<T>()` may throw an exception if converting the data to the desired type failed.
 
 You may pass a default value to `data()` or `value<T>()`, and if the node was not found, the default will be used instead of throwing an exception. (`value<T>()` will still throw an exception if converting the data fails.)
 

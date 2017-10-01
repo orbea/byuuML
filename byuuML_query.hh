@@ -68,7 +68,7 @@ namespace byuuML {
       ret.find_node(name);
       return ret;
     }
-    const node& node() const {
+    const node& get_node() const {
       if(finder.is_over()) throw missing_node_exception();
       return *finder;
     }
