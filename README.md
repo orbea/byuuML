@@ -17,7 +17,7 @@ Since there are already a number of other markup languages with the acronym BML,
 
 This library is licensed under the zlib license (see [`LICENSE.md`](LICENSE.md)).
 
-I don't claim to have originated or designed the byuuML format, or any copright on it. I only claim to have written this library, and originated the sequences of words that comprise its documentation.
+I don't claim to have originated or designed the byuuML format, or any copyright on it. I only claim to have written this library, and originated the sequences of words that comprise its documentation.
 
 # Using the `byuuML` library
 
